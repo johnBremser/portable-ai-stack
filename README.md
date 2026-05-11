@@ -307,5 +307,4 @@ cd frontend
 .venv\Scripts\activate.bat
 python app_web.py
 ```
-#   p o r t a b l e - a i - s t a c k  
- 
+#   p o r t a b l e - a i - s t a c k 
