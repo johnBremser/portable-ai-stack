@@ -1,0 +1,2 @@
+# Nenhuma dependência externa necessária para o servidor web estático (app_web.py).
+# O servidor usa bibliotecas padrão do Python (http.server).

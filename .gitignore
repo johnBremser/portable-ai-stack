@@ -1,0 +1,6 @@
+# Ambientes virtuais
+bin/python/
+data/
+
+# Arquivos de sistema
+.DS_Store
