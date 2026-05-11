@@ -1,6 +1,6 @@
 # 🤖 Local AI Stack
 
-> Stack completa para chat com **LLMs locais** via Ollama — sem cloud, sem custos de API, sem envio de dados externos.  
+> Stack completa para chat com **LLMs locais** via Ollama — sem cloud, sem custos de API, sem envio de dados externos.
 > Backend em **FastAPI** · Frontend em **Streamlit** · Modelo padrão: **Qwen3.5:4b**
 
 ![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat&logo=python&logoColor=white)
