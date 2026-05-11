@@ -11,7 +11,7 @@ O **Local AI Stack** é uma aplicação de chat com Modelos de Linguagem (LLMs) 
 - Chat textual com histórico de sessões
 - Upload e processamento de anexos (PDF, imagens, arquivos de texto/código)
 - Streaming de respostas em tempo real (Server-Sent Events)
-- Múltiplas interfaces de usuário (Streamlit e HTML5 puro)
+- Interface de usuário moderna em HTML5/JS puro (Vanilla)
 
 **Casos de uso principais:**
 - Uso profissional com dados sensíveis (sem envio para cloud)
@@ -26,7 +26,7 @@ O **Local AI Stack** é uma aplicação de chat com Modelos de Linguagem (LLMs) 
 - Criação automática de sessões (UUID v4)
 - Histórico limitado a 20 turnos por sessão (evita context overflow)
 - Limpeza individual ou global de sessões
-- Estado volátil (perdido ao reiniciar backend)
+- Persistência em Banco de Dados SQLite (data/sessions.db)
 
 ### 2.2 Processamento de Anexos
 Suporta três tipos de arquivos:
@@ -70,8 +70,7 @@ Suporta três tipos de arquivos:
 | **PDF raster** | PyMuPDF (fitz) | 1.25.3 | Rasterização de páginas PDF como imagem |
 | **Imagem** | Pillow | 11.0.0 | Processamento/redimensionamento de imagens |
 | **Upload** | python-multipart | 0.0.20 | Parse de multipart/form-data |
-| **Frontend principal** | Streamlit | 1.41.1 | Interface de chat reativa (porta 8501) |
-| **Frontend alternativo** | Python stdlib (http.server) | — | Servidor HTTP para HTML5 puro (porta 8502) |
+| **Frontend** | Python stdlib (http.server) | — | Servidor HTTP para HTML5 puro (porta 8502) |
 | **Frontend JS libs** | marked (CDN) | ~12.0.2 | Renderização Markdown no HTML5 |
 | **Frontend JS libs** | DOMPurify (CDN) | ~3.2.2 | Sanitização de HTML |
 
@@ -79,7 +78,6 @@ Suporta três tipos de arquivos:
 
 **Portas:**
 - Backend FastAPI: **8500** (configurável via env `PORT`)
-- Frontend Streamlit: **8501**
 - Frontend HTML5: **8502**
 - Ollama: **11434**
 
@@ -87,31 +85,30 @@ Suporta três tipos de arquivos:
 
 ## 4. Arquitetura de Alto Nível
 
-```
 ┌──────────────────────────────────────────────────────┐
 │                  Navegador (Browser)                 │
 │                                                      │
-│  ┌──────────────────┐    ┌──────────────────────┐   │
-│  │  Streamlit UI    │    │  HTML5/JS UI         │   │
-│  │  (porta 8501)    │    │  (porta 8502)        │   │
-│  └────────┬─────────┘    └──────────┬───────────┘   │
-└───────────┼─────────────────────────┼───────────────┘
-            │   HTTP REST (POST/GET)  │
-            ▼                         ▼
+│              ┌──────────────────────┐                │
+│              │    HTML5/JS UI       │                │
+│              │    (porta 8502)      │                │
+│              └──────────┬───────────┘                │
+└─────────────────────────┼────────────────────────────┘
+                          │   HTTP REST (POST/GET)
+                          ▼
 ┌──────────────────────────────────────────────────────┐
 │              Backend FastAPI (porta 8500)            │
 │                                                      │
 │  ┌──────────────────────────────────────────────┐   │
 │  │  api.py — Endpoints REST                     │   │
 │  │  • /health, /models, /stack-info             │   │
-│  │  • /chat, /chat/upload                                 │   │
-│  │  • /session/{id}, /sessions                            │   │
+│  │  • /chat, /chat/upload                       │   │
+│  │  • /session/{id}, /sessions                  │   │
 │  └──────────────────────────────────────────────┘   │
 │  ┌──────────────────────────────────────────────┐   │
 │  │  attachments.py — Processamento de arquivos  │   │
 │  └──────────────────────────────────────────────┘   │
 │  ┌──────────────────────────────────────────────┐   │
-│  │  sessions: dict (memória, volátil)           │   │
+│  │  sessions: SQLite (data/sessions.db)         │   │
 │  └──────────────────────────────────────────────┘   │
 └────────────────────────┬─────────────────────────────┘
                          │ HTTP (POST /api/chat)
@@ -120,10 +117,9 @@ Suporta três tipos de arquivos:
 │                Ollama (porta 11434)                  │
 │                                                      │
 │  ┌──────────────────────────────────────────────┐   │
-│  │  Modelos: gemma4:e2b (padrão), outros        │   │
+│  │  Modelos locais (gemma4:custom, etc.)        │   │
 │  └──────────────────────────────────────────────┘   │
 └──────────────────────────────────────────────────────┘
-```
 
 ---
 
@@ -144,7 +140,7 @@ Suporta três tipos de arquivos:
 
 **Nota:** O endpoint `/chat/stream` foi removido. Ambos `/chat` e `/chat/upload` agora retornam SSE streaming como modo padrão e único.
 
-**Gerenciamento de sessões:** dict em memória com histórico limitado a 20 turnos (`MAX_HISTORY`)
+**Gerenciamento de sessões:** Salvas em Banco SQLite e cache em memória (dict) para sessões ativas. Histórico limitado a 20 turnos (`MAX_HISTORY`) no envio para o LLM.
 
 **Lifespan:** Verifica conexão com Ollama na inicialização
 
@@ -159,15 +155,8 @@ Suporta três tipos de arquivos:
 - Texto/código: lê como UTF-8, trunca em 80.000 caracteres
 - Função `compose_user_message(user_text, outcome)` junta texto do usuário com conteúdo do anexo
 
-### 5.3 `frontend/app.py` (~500 linhas)
-**Responsabilidade:** Interface de chat Streamlit
-
-**Recursos:**
-- Sidebar com controles (modelo, temperatura, top_p, top_k, max_tokens, thinking, system prompt)
-- Métricas de sessão (mensagens, tokens)
-- Botão de anexar arquivo (via tkinter file dialog)
-- Balões diferenciados por papel (usuário vs assistente)
-- Barra de input fixa no rodapé via CSS
+### 5.3 Interface de Usuário HTML5
+A interface principal agora é baseada em HTML5 puro, servida pelo `app_web.py`. Localizada em `frontend/web/`.
 
 ### 5.4 `frontend/app_web.py`
 **Responsabilidade:** Servidor HTTP standalone para frontend HTML5
@@ -197,25 +186,26 @@ Suporta três tipos de arquivos:
 
 ### 6.1 Chat sem Anexo
 ```
-1. Usuário digita mensagem no frontend (Streamlit ou HTML5)
+1. Usuário digita mensagem no frontend HTML5
 2. Frontend envia POST /chat para Backend
 3. Backend:
    a. Gera/valida session_id (UUID)
-   b. Monta lista de mensagens com histórico (máx 20 turnos)
-   c. Envia POST para Ollama /api/chat com modelo, mensagens, parâmetros
+   b. Busca histórico no SQLite (se existir)
+   c. Monta lista de mensagens (máx 20 turnos)
+   d. Envia POST para Ollama /api/chat
 4. Ollama processa e retorna resposta em stream
 5. Backend encaminha tokens individualmente via SSE ao frontend
-6. Backend salva par (user, assistant) no histórico da sessão ao final (evento "done")
+6. Backend salva par (user, assistant) no SQLite ao final (evento "done")
 7. Frontend acumula tokens e exibe balão do assistente
 ```
 
 ### 6.2 Chat com Anexo
 ```
-1. Usuário seleciona arquivo (tkinter no Streamlit, <input> no HTML5)
+1. Usuário seleciona arquivo no frontend
 2. Frontend envia POST /chat/upload (multipart/form-data) ao Backend
 3. Backend (attachments.py):
    a. Classifica arquivo (PDF, imagem, texto) por extensão + MIME type
-   b. PDF → extrai texto (pypdf + PyMuPDF); se pouco texto, rasteriza páginas como PNG base64
+   b. PDF → extrai texto; se pouco texto, rasteriza páginas como PNG
    c. Imagem → redimensiona, converte para PNG base64
    d. Texto → lê UTF-8, trunca se necessário
    e. Monta mensagem combinando texto extraído + pergunta do usuário
@@ -227,11 +217,11 @@ Suporta três tipos de arquivos:
 ```
 1. Verifica Ollama instalado
 2. Inicia ollama serve em background (se não estiver rodando)
-3. Baixa modelo gemma4:e2b (se não existir)
+3. Baixa modelo padrão (se não existir)
 4. Cria venv do backend, instala deps, sobe uvicorn em background
 5. Health check no backend
-6. Cria venv do frontend, instala deps, sobe streamlit
-7. Abre navegador em http://localhost:8501
+6. Sobe servidor do frontend HTML5
+7. Abre navegador em http://localhost:8502
 ```
 
 ---
@@ -250,7 +240,7 @@ Suporta três tipos de arquivos:
 - PDFs com extração de texto fraca (scanned ou sem texto) são rasterizados como imagens
 - Imagens grandes são redimensionadas para máximo 2048px na maior dimensão
 - Arquivos de texto longos são truncados com aviso visível
-- Sessões são voláteis (perdidas ao reiniciar backend)
+- Sessões são persistidas em Banco de Dados SQLite (data/sessions.db)
 - Sem autenticação ou mecanismo de autorização
 
 ---
@@ -303,7 +293,7 @@ Suporta três tipos de arquivos:
 | **marked** | CDN (jsdelivr) | `cdn.jsdelivr.net` | Markdown parsing no HTML5 |
 | **DOMPurify** | CDN (jsdelivr) | `cdn.jsdelivr.net` | HTML sanitization no HTML5 |
 
-**Sem banco de dados.** Todo estado é volátil (memória).
+**Banco de Dados SQLite.** Sessões e histórico são persistidos em `data/sessions.db`.
 
 **Sem serviços cloud.** 100% local.
 
@@ -313,10 +303,9 @@ Suporta três tipos de arquivos:
 
 | Entry Point | Arquivo | Comando | Porta |
 |---|---|---|---|
-| **Script Windows completo** | `windows_start_all.bat` | `start_all.bat` | — |
-| **Script Linux completo** | `linux_start_all.sh` | `bash linux_start_all.sh` | — |
+| **Script Portátil (Setup)** | `setup_portable.bat` | `setup_portable.bat` | — |
+| **Script Portátil (Start)** | `start_portable.bat` | `start_portable.bat` | — |
 | **Backend (uvicorn direto)** | `backend/api.py` | `uvicorn api:app --host 0.0.0.0 --port 8500` | **8500** |
-| **Frontend Streamlit** | `frontend/app.py` | `streamlit run app.py --server.port 8501` | **8501** |
 | **Frontend HTML5** | `frontend/app_web.py` | `python app_web.py` | **8502** |
 
 ---

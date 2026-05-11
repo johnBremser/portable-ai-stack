@@ -75,78 +75,54 @@ python -c "import fastapi; print(fastapi.__version__)"
 
 ### 1.6 Setup do Frontend
 
+Como o frontend usa apenas arquivos estáticos (HTML5/JS), não há dependências Python obrigatórias, mas o servidor `app_web.py` usa apenas a biblioteca padrão do Python.
+
 ```bash
 cd ../frontend
-
-# Criar ambiente virtual
-python -m venv .venv
-
-# Ativar (Windows)
-.venv\Scripts\activate
-
-# Ativar (Linux/Mac)
-source .venv/bin/activate
-
-# Instalar dependências
-pip install -r requirements.txt
-
-# Verificar instalação
-python -c "import streamlit; print(streamlit.__version__)"
+# Nenhuma instalação de dependências necessária
 ```
 
 ---
 
 ## 2. Como Executar o Projeto
 
-### 2.1 Execução Rápida (Recomendado)
-
-**Linux:**
-```bash
-bash linux_start_all.sh
-```
+### 2.1 Execução Portátil (Recomendado)
 
 **Windows:**
 ```cmd
-windows_start_all.bat
+start_portable.bat
 ```
 
 Este script automatiza:
-1. Verificação e inicialização do Ollama
+1. Verificação e inicialização do Ollama Portable
 2. Download do modelo (se necessário)
-3. Setup e inicialização do backend
-4. Setup e inicialização do frontend
+3. Inicialização do backend FastAPI (porta 8500)
+4. Inicialização do frontend HTML5 (porta 8502)
 5. Abertura do navegador
 
 ### 2.2 Execução Manual (3 Terminais)
 
 **Terminal 1 — Ollama:**
 ```bash
-ollama serve
+bin\ollama-windows.exe serve
 ```
 
 **Terminal 2 — Backend:**
 ```bash
 cd backend
-# Ativar venv primeiro
-uvicorn api:app --host 0.0.0.0 --port 8500 --reload
-# Ou:
-python api.py
+..\bin\python\python.exe -m uvicorn api:app --host 0.0.0.0 --port 8500
 ```
 
 **Terminal 3 — Frontend:**
 ```bash
 cd frontend
-# Ativar venv primeiro
-streamlit run app.py --server.port 8501
-# Ou frontend alternativo:
-python app_web.py
+..\bin\python\python.exe app_web.py
 ```
 
 ### 2.3 URLs de Acesso
 
 | Serviço | URL |
 |---|---|
-| Frontend Streamlit | http://localhost:8501 |
 | Frontend HTML5 | http://localhost:8502 |
 | Backend API | http://localhost:8500 |
 | Swagger UI | http://localhost:8500/docs |
@@ -183,10 +159,9 @@ bash test_api.sh
 **Endpoints testados:**
 1. `GET /health` — Health check
 2. `GET /models` — Lista modelos
-3. `POST /chat` — Chat síncrono
-4. `POST /chat` (com session_id) — Histórico
+3. `POST /chat` — Chat com streaming SSE
+4. `GET /sessions` — Lista todas as sessões
 5. `GET /session/{id}` — Histórico da sessão
-6. `POST /chat/stream` — Streaming (primeiros 300 chars)
 
 ### 3.2 Teste de Upload
 
@@ -199,9 +174,9 @@ curl -X POST http://localhost:8500/chat/upload \
 ### 3.3 Teste de Streaming
 
 ```bash
-curl -X POST http://localhost:8500/chat/stream \
+curl -X POST http://localhost:8500/chat \
   -H "Content-Type: application/json" \
-  -d '{"message": "Olá", "model": "gemma4:e2b"}'
+  -d '{"message": "Olá", "model": "qwen3.5:4b"}'
 ```
 
 ---
@@ -304,14 +279,7 @@ async def novo_endpoint(req: NovoRequest):
 - `GET /health` (opcional, para status)
 - `GET /models` (opcional, para seleção)
 
-### 5.4 Adicionar Persistência de Sessões
-
-**Áreas de mudança:**
-1. `backend/api.py`: substituir `sessions: dict` por banco de dados
-2. Funções `get_or_create_session`, `update_history`, `get_session_history`
-3. Lifespan para conectar/desconectar do DB
-
-**⚠️ Risco:** Quebra invariante de sessões voláteis. Requer aprovação do usuário.
+**Áreas de mudança:** Implementado via SQLite em `backend/api.py`. Banco em `data/sessions.db`.
 
 ### 5.5 Adicionar Autenticação
 
@@ -336,7 +304,7 @@ async def novo_endpoint(req: NovoRequest):
 | 4 | Rasterização PDF: máx 5 páginas | Previne uso excessivo de memória/CPU |
 | 5 | Threshold PDF texto: 80 chars não-brancos | Decisão texto vs imagem |
 | 6 | CORS `allow_origins=["*"]` | Uso local isolado (não expor à internet) |
-| 7 | Sessões voláteis (sem persistência) | Design decision (se mudar, documentar) |
+| 7 | Sessões persistidas em SQLite | Design decision (persistência no pendrive) |
 | 8 | Frontend nunca acessa Ollama diretamente | Separação de concerns |
 | 9 | Anexos processados no backend | Segurança e consistência |
 
@@ -384,8 +352,8 @@ async def novo_endpoint(req: NovoRequest):
 **Situação:**
 - `api.py`: default 8500 (via env `PORT`)
 - `backend/start.sh`: 8500
-- `windows_start_all.bat`: 8000
-- `test_api.sh`: 8000
+- `start_portable.bat`: 8500
+- `test_api.sh`: 8500
 
 **Recomendação:** Padronizar para 8500 em todos os arquivos.
 
@@ -394,39 +362,21 @@ async def novo_endpoint(req: NovoRequest):
 ## 8. Estrutura do Projeto
 
 ```
-local-ai-stack/
-├── .gitignore                      # Ignora .venv/, __pycache__/, *.pyc
-├── LICENSE                         # MIT License
-├── README.md                       # Documentação principal
-├── linux_start_all.sh              # Script de inicialização Linux
-├── windows_start_all.bat           # Script de inicialização Windows
-│
+portable-ai-stack/
+├── setup_portable.bat              # Setup completo do pendrive
+├── start_portable.bat              # Inicialização rápida
+├── bin/                            # Binários (Python, Ollama)
+├── data/                           # Dados (Modelos, SQLite)
 ├── backend/
-│   ├── api.py                      # API FastAPI (endpoints, sessões, streaming)
-│   ├── attachments.py              # Processamento de anexos (PDF, imagem, texto)
+│   ├── api.py                      # API FastAPI
+│   ├── attachments.py              # Processamento de anexos
 │   ├── requirements.txt            # Dependências Python
 │   ├── README.md                   # Documentação do backend
-│   ├── start.sh                    # Script de inicialização (Linux)
-│   ├── test_api.sh                 # Testes manuais via curl
-│   └── img/                        # Screenshots para documentação
-│
-├── frontend/
-│   ├── app.py                      # Frontend Streamlit (principal)
-│   ├── app_web.py                  # Servidor HTTP para HTML5 alternativo
-│   ├── requirements.txt            # Dependências Python
-│   ├── README.md                   # Documentação do frontend
-│   ├── start.sh                    # Script de inicialização (Linux)
-│   ├── .streamlit/
-│   │   └── config.toml             # Tema Streamlit (dark, vinho)
-│   └── web/
-│       ├── index.html              # Frontend HTML5 alternativo
-│       ├── app.js                  # Lógica JavaScript (SSE, markdown)
-│       └── styles.css              # CSS (dark theme, responsivo)
-│
-└── docs/
-    ├── Modelfiles/
-    │   └── analista_dados.Modelfile  # Modelo customizado Ollama
-    └── specs/                        # Especificações SDD (este diretório)
+│   └── test_api.sh                 # Testes manuais via curl
+└── frontend/
+    ├── app_web.py                  # Servidor HTTP para HTML5
+    ├── web/                        # Interface de usuário
+    └── README.md                   # Documentação do frontend
 ```
 
 ---
@@ -451,8 +401,8 @@ rmdir /s /q __pycache__
 ### 9.2 Frontend
 
 ```bash
-# Streamlit
-streamlit run app.py --server.port 8501
+# HTML5 principal
+python app_web.py
 
 # HTML5 alternativo
 python app_web.py

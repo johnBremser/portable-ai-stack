@@ -151,9 +151,9 @@
         if (m.metrics) {
           const footer = document.createElement("div");
           footer.className = "msg-footer";
-          
+
           const { duration, tps, tokens_used, ttft } = m.metrics;
-          
+
           footer.innerHTML = `
             <div class="metric-pill" title="Velocidade de geração">
               <span class="icon">⚡</span> ${tps} tok/s
@@ -455,7 +455,7 @@
   function updateMetrics(lastMetrics = null) {
     el.metricMsgs.textContent = String(messages.length);
     el.metricTokens.textContent = totalTokens.toLocaleString("pt-BR");
-    
+
     if (lastMetrics) {
       if (lastMetrics.duration !== undefined) el.metricTime.textContent = lastMetrics.duration + "s";
       if (lastMetrics.tps !== undefined) el.metricTps.textContent = lastMetrics.tps;
@@ -475,14 +475,14 @@
   function setLoading(on) {
     el.loadingRow.classList.toggle("active", on);
     el.btnSend.classList.toggle("generating", on); // Transforma visualmente em botão Stop
-    
+
     // Habilita o botão para o usuário poder clicar no Stop se estiver gerando
     if (on) {
       el.btnSend.disabled = false;
     } else {
       el.btnSend.disabled = !apiOnline;
     }
-    
+
     el.messageInput.disabled = on || !apiOnline;
     el.btnClip.disabled = on || !apiOnline;
   }
@@ -654,10 +654,10 @@
       } else {
         result = await streamChat(body, abortController.signal);
       }
-      messages.push({ 
-        role: "assistant", 
-        content: result.reply || "", 
-        metrics: result.metrics 
+      messages.push({
+        role: "assistant",
+        content: result.reply || "",
+        metrics: result.metrics
       });
     } catch (e) {
       if (e.name === "AbortError") {

@@ -1,4 +1,4 @@
-# 🖥️ Frontend — Local AI Stack (HTML5)
+# 🖥️ Frontend — Portable AI Stack (HTML5)
 
 > Interface de chat moderna construída com **HTML5, Vanilla JavaScript e CSS3**, servida por um servidor Python leve.
 > Identidade visual em vermelho vinho, preto e branco — design premium e responsivo.
@@ -82,8 +82,7 @@ python app_web.py
 ```
 frontend/
 ├── app_web.py          # Servidor HTTP simples para os arquivos estáticos
-├── requirements.txt    # Lista de dependências (atualmente vazia)
-├── start.sh            # Script de inicialização
+├── start_frontend.bat  # Inicialização individual
 └── web/                # Pasta raiz dos arquivos estáticos
     ├── index.html      # Estrutura da página
     ├── styles.css      # Design e animações

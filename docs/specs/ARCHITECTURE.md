@@ -11,16 +11,15 @@ O Local AI Stack segue uma **arquitetura em camadas (layered) com separação fr
 ```
 [Camada de Apresentação]  →  [Camada de Aplicação]  →  [Camada de Inferência]
   Frontend (Browser)            Backend (FastAPI)         Ollama (LLM)
-  Porta 8501/8502               Porta 8500                Porta 11434
+  Porta 8502                    Porta 8500                Porta 11434
 ```
 
 **Características arquiteturais:**
 - Separação completa de concerns: frontend não acessa Ollama diretamente
 - API RESTful com CORS habilitado (`allow_origins=["*"]`)
-- Sessões em memória (dict Python) — sem banco de dados persistido
+- Persistência em Banco de Dados SQLite (data/sessions.db)
 - Streaming via Server-Sent Events (SSE) como modo padrão em `/chat` e `/chat/upload`
 - Upload multipart para anexos no endpoint `/chat/upload`
-- Stateless entre reinícios: sessões são voláteis (em memória)
 
 ---
 
@@ -28,20 +27,18 @@ O Local AI Stack segue uma **arquitetura em camadas (layered) com separação fr
 
 ### 2.1 Camada de Apresentação (Frontend)
 
-**Tecnologias:** Streamlit (principal) ou HTML5/JS (alternativo)
+**Tecnologias:** HTML5/JS (Vanilla)
 
 **Componentes:**
 
 | Componente | Arquivo | Responsabilidade |
 |---|---|---|
-| **Streamlit UI** | `frontend/app.py` | Interface de chat reativa com tema customizado (vinho/preto), sidebar com controles, métricas de sessão, diálogo de arquivos via tkinter |
 | **HTML5 Server** | `frontend/app_web.py` | Servidor HTTP standalone (stdlib Python) para servir frontend HTML5 puro |
-| **HTML5 UI** | `frontend/web/index.html` | Página HTML5 alternativa (sem dependência de Streamlit) |
+| **HTML5 UI** | `frontend/web/index.html` | Interface de chat moderna e responsiva |
 | **JavaScript Logic** | `frontend/web/app.js` | Lógica de chat, consumo de SSE (ReadableStream), sanitização (DOMPurify), renderização Markdown (marked) |
-| **CSS Styles** | `frontend/web/styles.css` | Design system dark com vinho (#8b1a1a), responsivo (sidebar drawer em mobile) |
+| **CSS Styles** | `frontend/web/styles.css` | Design system dark com vinho (#8b1a1a), responsivo |
 
 **Portas:**
-- Streamlit: **8501**
 - HTML5: **8502** (configurável via `WEB_PORT`)
 
 **Responsabilidades da camada:**
@@ -67,7 +64,7 @@ O Local AI Stack segue uma **arquitetura em camadas (layered) com separação fr
 
 **Responsabilidades da camada:**
 - Receber requisições HTTP do frontend
-- Gerenciar sessões e histórico (dict em memória)
+- Gerenciar sessões e histórico (SQLite + cache em memória)
 - Validar schemas de entrada (Pydantic)
 - Processar arquivos anexados
 - Montar payloads para Ollama (sempre com `stream: true`)
@@ -104,11 +101,11 @@ O Local AI Stack segue uma **arquitetura em camadas (layered) com separação fr
 │          │ ←────────────────────────  │              │ ←─────────────────── │         │
 └──────────┘    SSE (text/event-stream) └──────────────┘    SSE streaming     └─────────┘
                       │                        │
-                      │                        │ Salva (user, assistant)
-                      │                        │ em sessions[session_id]
+                      │                        │ Salva histórico
+                      │                        │ no SQLite
                       ▼                        ▼
-               Exibe balão            Histórico atualizado
-               do assistente          (máx 20 turnos)
+               Exibe balão            Banco de Dados
+               do assistente          Atualizado
                via tokens SSE
 ```
 
@@ -140,15 +137,14 @@ O Local AI Stack segue uma **arquitetura em camadas (layered) com separação fr
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    start_all.sh / .bat                       │
+│                    start_portable.bat                       │
 ├─────────────────────────────────────────────────────────────┤
-│  1. Verifica Ollama instalado                                │
-│  2. Inicia ollama serve (background, se necessário)          │
-│  3. Baixa modelo gemma4:e2b (se não existir)                 │
-│  4. Cria venv backend → instala deps → sobe uvicorn          │
-│  5. Health check no backend (aguarda porta 8500)             │
-│  6. Cria venv frontend → instala deps → sobe streamlit       │
-│  7. Abre navegador em http://localhost:8501                  │
+│  1. Verifica Ollama Portable                                 │
+│  2. Inicia ollama serve (background, isolado em /bin)        │
+│  3. Baixa modelo padrão (se não existir)                     │
+│  4. Inicia Backend (api.py) usando Python local              │
+│  5. Inicia Frontend (app_web.py) usando Python local         │
+│  6. Abre navegador em http://localhost:8502                  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -202,7 +198,7 @@ Quando `"done": true`, o campo `eval_count` indica o total de tokens gerados.
 - `DELETE /session/{id}` — Limpa sessão
 - `DELETE /sessions` — Limpa todas as sessões
 
-**Nota sobre SSE:** Tanto `/chat` quanto `/chat/upload` retornam `text/event-stream`. O frontend HTML5 consome os tokens em tempo real via `ReadableStream`. O frontend Streamlit usa httpx síncrono e espera a resposta completa (o backend acumula os tokens internamente antes de retornar o JSON final).
+**Nota sobre SSE:** Tanto `/chat` quanto `/chat/upload` retornam `text/event-stream`. O frontend HTML5 consome os tokens em tempo real via `ReadableStream`. Não há mais suporte ao Streamlit. Não há mais endpoint `/chat/stream` — SSE é o modo padrão e único.
 
 ### 4.3 CORS
 
@@ -229,12 +225,8 @@ Pillow==11.0.0
 python-multipart==0.0.20
 ```
 
-### 5.2 Dependências do Frontend (`frontend/requirements.txt`)
-
-```
-streamlit==1.41.1
-httpx==0.28.1
-```
+### 5.2 Dependências do Frontend
+Nenhuma dependência externa necessária; utiliza apenas bibliotecas padrão do Python para servir arquivos estáticos.
 
 ### 5.3 Dependências de Frontend HTML5 (CDN)
 
@@ -252,31 +244,32 @@ httpx==0.28.1
 
 ### 6.1 Gerenciamento de Sessões
 
-**Estrutura:** `sessions: dict[str, list[dict]]` (memória)
+**Estrutura:** SQLite + `sessions: dict[str, list[dict]]` (cache em memória)
+
+**Persistência:** Banco de Dados em `data/sessions.db`
 
 **Chave:** UUID v4 (string)
 
-**Valor:** Lista de mensagens (role + content)
+**Valor:** JSON das mensagens (role + content)
 
-**Limite:** 20 turnos por sessão (`MAX_HISTORY = 20`)
+**Limite:** 20 turnos por sessão (`MAX_HISTORY = 20`) enviadas ao LLM
 
 **Ciclo de vida:**
 - Criação: automática no primeiro request (`get_or_create_session`)
-- Atualização: append de par (user, assistant) após resposta
+- Atualização: persistência no SQLite após resposta
 - Limpeza: individual (`DELETE /session/{id}`) ou global (`DELETE /sessions`)
-- Expiração: inexistente; sessão persiste até reinício do backend
+- Persistência: as sessões sobrevivem a reinícios do backend
 
 ### 6.2 Streaming via SSE
 
 **Endpoints:** `POST /chat` e `POST /chat/upload`
 
 **Implementação:**
-- O backend SEMPRE chama Ollama com `stream: True` (função `_build_ollama_payload`)
-- A função `_stream_ollama_events` faz o stream dos tokens via `httpx.AsyncClient.stream` e yield eventos SSE
+- O backend SEMPRE chama Ollama com `stream: True`
+- A função `_stream_llm_events` faz o stream dos tokens via `httpx.AsyncClient.stream` e yield eventos SSE
 - Cada evento é uma linha JSON: `{"type": "token", "token": "..."}`
 - Eventos especiais: `start` (session_id), `think` (raciocínio interno), `done` (fim + tokens_used), `error`
 - Frontend HTML5 usa `ReadableStream` + `TextDecoder` para consumir tokens em tempo real
-- Frontend Streamlit usa chamada síncrona (não faz streaming; aguarda resposta completa)
 - Não há mais endpoint `/chat/stream` — SSE é o modo padrão e único
 
 ### 6.3 Processamento de Anexos
@@ -306,7 +299,7 @@ httpx==0.28.1
 
 ### 7.2 Acoplamento Fraco
 - Backend ↔ Ollama: comunicação via HTTP REST; trocar Ollama por outro serviço requer apenas mudar URL
-- Frontend Streamlit ↔ Frontend HTML5: independentes; ambos consomem mesma API
+- Frontend HTML5: consome a API REST de forma desacoplada
 
 ### 7.3 Riscos de Acoplamento
 - Alterar schema de `ChatRequest` ou `ChatResponse` requer atualização em ambos os frontends
@@ -323,7 +316,7 @@ httpx==0.28.1
 3. Anexos são processados no backend (nunca no frontend)
 4. Histórico é limitado (MAX_HISTORY = 20)
 5. CORS permite todas as origens (uso local isolado)
-6. Sessões são voláteis (sem persistência em disco)
+6. Sessões são persistidas em SQLite (data/sessions.db)
 7. Ollama é dependência externa obrigatória
 
 ---

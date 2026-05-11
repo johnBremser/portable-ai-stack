@@ -21,47 +21,21 @@ Usuário → Frontend → Backend → Ollama (LLM) → Backend → Frontend → 
 
 ## 2. Scripts de Orquestração
 
-### 2.1 `linux_start_all.sh` (Linux)
+### 2.1 `start_portable.bat` (Windows)
 
-**Tipo:** Script Bash de inicialização completa
+**Tipo:** Batch script de inicialização portátil completa
 
-**Responsabilidade:** Automatizar subida de toda a stack (Ollama + Backend + Frontend)
+**Responsabilidade:** Automatizar subida de toda a stack (Ollama + Backend + Frontend) a partir do pendrive.
 
 **Fluxo de Execução:**
 
 ```
-1. Verifica se Ollama está instalado (command -v ollama)
-   │
-   ├─ NÃO → Instala Ollama via curl -fsSL https://ollama.com/install.sh | sh
-   └─ SIM → Continua
-   │
-2. Inicia Ollama em background (ollama serve &)
-   │
-3. Aguarda Ollama ficar disponível (loop com sleep)
-   │
-4. Verifica se modelo gemma4:e2b está instalado (ollama list)
-   │
-   ├─ NÃO → Baixa modelo (ollama pull gemma4:e2b)
-   └─ SIM → Continua
-   │
-5. Backend:
-   a. cd backend
-   b. Cria venv se não existe (python -m venv .venv)
-   c. Ativa venv (source .venv/bin/activate)
-   d. Instala deps (pip install -r requirements.txt)
-   e. Sobe uvicorn em background (python api.py &)
-   f. Aguarda health check (curl localhost:8500/health)
-   │
-6. Frontend:
-   a. cd frontend
-   b. Cria venv se não existe
-   c. Ativa venv
-   d. Instala deps (pip install -r requirements.txt)
-   e. Sobe streamlit em background (streamlit run app.py &)
-   │
-7. Abre navegador (xdg-open http://localhost:8501)
-   │
-8. Exibe mensagem de conclusão
+1. Define caminhos relativos (bin\python, bin\ollama-windows.exe)
+2. Configura OLLAMA_MODELS para data\models (impede uso do disco C:)
+3. Inicia Ollama Portable em background (start /min bin\ollama-windows.exe serve)
+4. Inicia Backend FastAPI usando Python local (bin\python\python.exe -m uvicorn api:app)
+5. Inicia Frontend HTML5 usando Python local (bin\python\python.exe app_web.py)
+6. Abre navegador em http://localhost:8502
 ```
 
 **Características:**
@@ -70,48 +44,11 @@ Usuário → Frontend → Backend → Ollama (LLM) → Backend → Frontend → 
 - Aguarda serviços ficarem disponíveis antes de prosseguir
 - Roda todos os serviços em background
 
-### 2.2 `windows_start_all.bat` (Windows)
+### 2.2 `setup_portable.bat / .ps1`
 
-**Tipo:** Batch script de inicialização completa
+**Tipo:** Scripts de configuração inicial do pendrive
 
-**Responsabilidade:** Same as Linux script, adaptado para Windows
-
-**Diferenças para versão Linux:**
-- Não instala Ollama automaticamente (requer instalação manual prévia)
-- Usa `start /B` para processos em background
-- Porta do backend: **8500** (consistente com o código)
-- Abre navegador via `start http://localhost:8501`
-
-**Fluxo de Execução:**
-
-```
-1. Verifica se Ollama está instalado (where ollama)
-   │
-   ├─ NÃO → Exibe erro e instruções para instalar manualmente
-   └─ SIM → Continua
-   │
-2. Inicia Ollama em background (start /B ollama serve)
-   │
-3. Verifica se modelo gemma4:e2b está instalado
-   │
-   ├─ NÃO → Baixa modelo (ollama pull gemma4:e2b)
-   └─ SIM → Continua
-   │
-4. Backend:
-   a. cd backend
-   b. Cria venv se não existe (python -m venv .venv)
-   c. Instala deps (pip install -r requirements.txt)
-   d. Sobe uvicorn em background (start /B uvicorn api:app --host 0.0.0.0 --port 8500)
-   e. Aguarda health check (curl localhost:8500/health)
-   │
-5. Frontend:
-   a. cd frontend
-   b. Cria venv se não existe
-   c. Instala deps
-   d. Sobe streamlit (start /B streamlit run app.py --server.port 8501)
-   │
-6. Abre navegador (start http://localhost:8501)
-```
+**Responsabilidade:** Baixar e configurar Python e Ollama diretamente na pasta `bin/`, tornando a stack 100% independente do sistema hospedeiro.
 
 **Nota:** Porta do backend é **8500**, consistente com `api.py` e demais scripts.
 
@@ -197,6 +134,7 @@ SHUTDOWN:
 ```
 
 **Propósito:**
+- Garantir que o Banco de Dados SQLite está inicializado (`init_db`)
 - Verificar conectividade com Ollama antes de receber requisições
 - Logar modelos disponíveis para diagnóstico
 - Informar engine de rasterização PDF em uso
@@ -210,16 +148,15 @@ SHUTDOWN:
 ```
 ┌─────────┐     ┌───────────┐     ┌───────────┐     ┌─────────┐
 │Usuário  │────→│ Frontend  │────→│  Backend  │────→│  Ollama │
-│         │     │           │     │           │     │         │
+│         │     │ (HTML5)   │     │ (api.py)  │     │         │
 │         │←────│           │←────│           │←────│         │
 └─────────┘     └───────────┘     └───────────┘     └─────────┘
 
 Detalhamento:
 1. Usuário digita mensagem + opcionalmente anexa arquivo
 2. Frontend envia POST para Backend:
-   - /chat (resposta completa)
-   - /chat/stream (streaming SSE)
-   - /chat/upload (com anexo)
+   - /chat (streaming SSE)
+   - /chat/upload (com anexo, streaming SSE)
 3. Backend:
    a. Gera/valida session_id
    b. Recupera histórico (máx 20 turnos)
@@ -227,8 +164,8 @@ Detalhamento:
    d. Monta payload para Ollama
    e. Envia POST /api/chat
 4. Ollama processa e retorna resposta
-5. Backend salva par (user, assistant) no histórico
-6. Resposta retorna ao frontend
+5. Backend salva par (user, assistant) no SQLite
+6. Resposta retorna ao frontend em tempo real (SSE)
 7. Frontend exibe balão do assistente
 ```
 
@@ -278,8 +215,8 @@ Request recebido com session_id?
   SIM       NÃO
    │         │
    ▼         ▼
- Session ID  Gera UUID v4
- existe?     nova
+ Busca no    Gera UUID v4
+ SQLite      nova
    │
  ┌─┴─┐
  ▼   ▼
@@ -298,7 +235,7 @@ Envia para Ollama
    │
    ▼
 Salva (user, assistant)
-no histórico
+no SQLite (sessions.db)
 ```
 
 ---
@@ -323,7 +260,7 @@ Se um agente AI externo (ex: Qwen Code, Cursor, etc.) for operar neste repositó
 - Ler código e documentação
 - Modificar endpoints da API
 - Adicionar novos schemas Pydantic
-- Alterar frontend (Streamlit ou HTML5)
+- Alterar frontend (HTML5)
 - Adicionar testes
 - Atualizar documentação
 
@@ -331,7 +268,7 @@ Se um agente AI externo (ex: Qwen Code, Cursor, etc.) for operar neste repositó
 - Alterar porta padrão do backend (quebra scripts)
 - Mudar modelo padrão (afeta experiência do usuário)
 - Adicionar dependências externas novas
-- Alterar estrutura de sessões (ex: adicionar persistência)
+- Alterar estrutura de sessões (já implementado via SQLite)
 - Modificar CORS (impacto de segurança)
 
 ### 7.3 Invariantes a Respeitar
@@ -339,7 +276,7 @@ Se um agente AI externo (ex: Qwen Code, Cursor, etc.) for operar neste repositó
 2. Backend gerencia sessões e histórico
 3. Anexos são processados no backend
 4. Histórico é limitado (MAX_HISTORY = 20)
-5. Sessões são voláteis (sem persistência em disco)
+5. Sessões são persistidas em SQLite (sessions.db)
 6. Ollama é dependência externa obrigatória
 
 ---

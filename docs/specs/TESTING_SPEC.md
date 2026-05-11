@@ -10,7 +10,7 @@ O Local AI Stack atualmente utiliza **testes manuais via curl** como estratégia
 
 **Abordagem atual:**
 - Script `backend/test_api.sh` testa endpoints via curl
-- Validação visual via interface Streamlit/HTML5
+- Validação visual via interface HTML5
 - Health check como diagnóstico rápido
 
 **Abordagem recomendada:**
@@ -54,9 +54,9 @@ O Local AI Stack atualmente utiliza **testes manuais via curl** como estratégia
 | `/models` | GET | Lista modelos do Ollama |
 | `/chat` | POST | Stream de tokens via SSE (default) |
 | `/chat/upload` | POST | Processa anexo e retorna stream via SSE |
-| `/session/{id}` | GET | Retorna histórico |
-| `/session/{id}` | DELETE | Limpa histórico |
-| `/sessions` | DELETE | Limpa todas as sessões |
+| `/session/{id}` | GET | Retorna histórico (do SQLite) |
+| `/session/{id}` | DELETE | Limpa histórico (no SQLite) |
+| `/sessions` | DELETE | Limpa todas as sessões (no SQLite) |
 
 ### 2.3 Testes End-to-End (Manual)
 
@@ -81,7 +81,7 @@ O Local AI Stack atualmente utiliza **testes manuais via curl** como estratégia
 **Casos para testar:**
 1. Enviar mensagem e ver resposta
 2. Anexar arquivo e ver processamento
-3. Ver histórico após múltiplas mensagens
+3. Ver histórico após múltiplas mensagens (histórico persistente)
 4. Limpar conversa e recomeçar
 5. Mudar modelo e parâmetros
 6. Streaming em tempo real (HTML5)
@@ -130,9 +130,9 @@ O Local AI Stack atualmente utiliza **testes manuais via curl** como estratégia
 
 | # | Funcionalidade | Teste | Tipo |
 |---|---|---|---|
-| F20 | Get session history | GET /session/{id} → retorna messages | Integração |
-| F21 | Clear session | DELETE /session/{id} → histórico vazio | Integração |
-| F22 | Clear all sessions | DELETE /sessions → todas as sessões removidas | Integração |
+| F20 | Get session history | GET /session/{id} → retorna messages do SQLite | Integração |
+| F21 | Clear session | DELETE /session/{id} → histórico removido do SQLite | Integração |
+| F22 | Clear all sessions | DELETE /sessions → todas as sessões removidas do SQLite | Integração |
 | F23 | Session não encontrada | GET/DELETE /session/{id} inexistente → HTTP 404 | Integração |
 
 ### 3.5 Health Check e Diagnóstico
@@ -203,14 +203,16 @@ def test_process_attachment_arquivo_grande():
 
 ```python
 def test_get_or_create_session_nova():
-    """Session_id None deve criar novo UUID."""
-    from backend.api import get_or_create_session, sessions
+    """Session_id None deve criar novo UUID e inserir no SQLite."""
+    from backend.api import get_or_create_session
     
     session_id = get_or_create_session(None)
     
     assert session_id is not None
-    assert session_id in sessions
-    assert len(sessions[session_id]) == 0
+    # Verificação no SQLite via db.py
+    from backend.db import get_session_history
+    history = get_session_history(session_id)
+    assert len(history) == 0
 ```
 
 #### Test: `build_messages` com histórico
@@ -218,15 +220,13 @@ def test_get_or_create_session_nova():
 ```python
 def test_build_messages_com_historico():
     """Deve incluir histórico limitado a MAX_HISTORY turnos."""
-    from backend.api import build_messages, sessions
+    from backend.api import build_messages
+    from backend.db import update_history
     
-    # Criar sessão com histórico
+    # Criar sessão com histórico no SQLite
     sid = "test-session"
-    sessions[sid] = [
-        {"role": "user", "content": "msg 1"},
-        {"role": "assistant", "content": "resp 1"},
-        # ... adicionar 25 turnos
-    ]
+    update_history(sid, "user", "msg 1")
+    update_history(sid, "assistant", "resp 1")
     
     messages = build_messages(sid, "nova mensagem", None)
     
@@ -434,30 +434,17 @@ curl -N -s -X POST http://localhost:8500/chat/upload \
 
 ## 5. Testes de Frontend
 
-### 5.1 Streamlit (`frontend/app.py`)
+### 5.1 HTML5 (`frontend/web/`)
 
 | # | Teste | Como Validar |
 |---|---|---|
-| FE1 | Interface carrega | Acessar http://localhost:8501 |
-| FE2 | Backend status badge | Verificar "Ollama online" na sidebar |
-| FE3 | Enviar mensagem | Digitar e ver resposta no chat |
-| FE4 | Anexar arquivo | Clicar 📎, selecionar arquivo, enviar |
-| FE5 | Métricas atualizam | Contador de mensagens/tokens aumenta |
-| FE6 | Limpar conversa | Botão 🗑️ limpa histórico |
-| FE7 | Mudar parâmetros | Sliders na sidebar afetam resposta |
-| FE8 | Responsividade | Redimensionar janela |
-
-### 5.2 HTML5 (`frontend/web/`)
-
-| # | Teste | Como Validar |
-|---|---|---|
-| FE9 | Interface carrega | Acessar http://localhost:8502 |
-| FE10 | Streaming funciona | Tokens aparecem em tempo real |
-| FE11 | Thinking panel colapsável | think=true mostra painel clicável |
-| FE12 | Markdown renderiza | Respostas com **bold**, `code`, listas |
-| FE13 | Sidebar responsiva | Drawer em telas < 860px |
-| FE14 | Auto-resize textarea | Input cresce com texto |
-| FE15 | Upload de arquivo | Input file + hint de arquivo selecionado |
+| FE1 | Interface carrega | Acessar http://localhost:8502 |
+| FE2 | Streaming funciona | Tokens aparecem em tempo real |
+| FE3 | Thinking panel colapsável | think=true mostra painel clicável |
+| FE4 | Markdown renderiza | Respostas com **bold**, `code`, listas |
+| FE5 | Sidebar responsiva | Drawer em telas < 860px |
+| FE6 | Auto-resize textarea | Input cresce com texto |
+| FE7 | Upload de arquivo | Input file + hint de arquivo selecionado |
 
 ---
 
@@ -473,7 +460,6 @@ curl -N -s -X POST http://localhost:8500/chat/upload \
 | Processamento PDF | ✅ (_extract_pdf_text) | ❌ | ✅ |
 | Processamento imagem | ✅ (_process_image) | ❌ | ✅ |
 | Processamento texto | ✅ (_process_text_file) | ❌ | ✅ |
-| Frontend Streamlit | ❌ | ❌ | ✅ |
 | Frontend HTML5 (SSE) | ❌ | ❌ | ✅ |
 
 **Notas:**
@@ -533,9 +519,10 @@ def mock_ollama():
         yield
 
 @pytest.fixture(autouse=True)
-def clean_sessions():
-    """Limpar sessões entre testes."""
-    sessions.clear()
+def clean_db():
+    """Limpar Banco de Dados entre testes."""
+    from backend.db import clear_all_sessions
+    clear_all_sessions()
     yield
 ```
 
@@ -556,7 +543,7 @@ pytest tests/ -v
 2. **Chat SSE básico** — Mensagem simples retorna stream SSE com tokens
 3. **Upload de PDF via SSE** — PDF com texto e PDF escaneado
 4. **SSE Content-Type** — Response headers incluem `text/event-stream`
-5. **Histórico** — Sessão mantém contexto entre mensagens
+5. **Sessão Persistente** — Histórico sobrevive a reinício do backend (SQLite)
 
 ---
 
@@ -570,7 +557,7 @@ pytest tests/ -v
 | Tempo até primeiro token | `curl -N` + timestamp | < 5s |
 | Throughput | Requisições simultâneas | 1-2 (single-thread Ollama) |
 | Uso de memória | `ps aux | grep python` | < 2 GB (backend + Ollama) |
-| Tamanho de sessão | 20 turnos em memória | < 100 KB |
+| Tamanho de sessão | 20 turnos no SQLite | < 100 KB |
 
 ---
 

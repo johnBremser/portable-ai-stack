@@ -1,4 +1,4 @@
-# Backend — Local LLM Chat API
+# 🤖 Backend — Portable AI Stack (FastAPI)
 
 API REST construída com **FastAPI** para servir como camada de comunicação entre qualquer frontend e modelos LLM locais via **Ollama**.
 
@@ -22,13 +22,13 @@ API REST construída com **FastAPI** para servir como camada de comunicação en
 |---|---|---|
 | `GET` | `/health` | Status da API e do Ollama |
 | `GET` | `/models` | Modelos disponíveis no Ollama |
-| `POST` | `/chat` | Chat com resposta completa |
-| `POST` | `/chat/stream` | Chat com streaming (SSE) |
+| `POST` | `/chat` | Chat com streaming (SSE) |
+| `POST` | `/chat/upload` | Chat com anexo e streaming (SSE) |
 | `GET` | `/session/{id}` | Histórico de uma sessão |
 | `DELETE` | `/session/{id}` | Limpa histórico da sessão |
 | `DELETE` | `/sessions` | Limpa todas as sessões |
 
-Documentação interativa: `http://localhost:8000/docs`
+Documentação interativa: `http://localhost:8500/docs`
 
 ---
 
@@ -65,7 +65,7 @@ bash test_api.sh
 import httpx
 
 # Chat simples
-resp = httpx.post("http://localhost:8000/chat", json={
+resp = httpx.post("http://localhost:8500/chat", json={
     "message": "Explique o que é um modelo de linguagem.",
     "model": "qwen3.5:4b",
     "temperature": 0.7,
@@ -75,7 +75,7 @@ print(data["response"])
 
 # Continuar a conversa com o mesmo session_id
 session_id = data["session_id"]
-resp2 = httpx.post("http://localhost:8000/chat", json={
+resp2 = httpx.post("http://localhost:8500/chat", json={
     "message": "Dê um exemplo de aplicação bancária.",
     "session_id": session_id,
     "model": "qwen3.5:4b",
@@ -89,10 +89,8 @@ print(resp2.json()["response"])
 
 ```
 backend/
-├── api.py            # Aplicação FastAPI principal
-├── requirements.txt  # Dependências Python
-├── start.sh          # Script de inicialização
-└── test_api.sh       # Testes dos endpoints via curl
+├── api.py              # Aplicação FastAPI principal
+└── start_backend.bat   # Inicialização individual
 ```
 
 ---
