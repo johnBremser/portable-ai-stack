@@ -102,6 +102,7 @@ start_portable.bat
 ```
 
 O script fará o seguinte:
+
 1. Sobe o **Ollama Portable** em background.
 2. Inicia o **Backend FastAPI** na porta `8500`.
 3. Inicia o **Frontend Web** e abre o navegador em `http://localhost:8502`.
