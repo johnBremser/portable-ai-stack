@@ -8,7 +8,7 @@ set OLLAMA_EXE=%BASE_DIR%bin\ollama-windows.exe
 set MODELS_DIR=%BASE_DIR%data\models
 
 :: Configura o caminho de dados do Ollama para o pendrive
-set OLLAMA_MODELS=%MODELS_DIR%\ollama_data
+set OLLAMA_MODELS=%MODELS_DIR%
 set OLLAMA_HOST=127.0.0.1:11434
 
 echo ====================================================

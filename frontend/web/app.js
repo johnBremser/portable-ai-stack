@@ -568,34 +568,46 @@
         clearError();
       }
 
-      const models = Array.isArray(h.models) && h.models.length ? h.models : [DEFAULT_MODEL];
+      const models = Array.isArray(h.models) ? h.models : [];
       const current = el.modelSelect.value;
       el.modelSelect.innerHTML = "";
-      for (const name of models) {
+
+      if (models.length === 0) {
         const opt = document.createElement("option");
-        opt.value = name;
-        opt.textContent = name;
-        // Se for o primeiro carregamento e for o modelo padrão, marca como selecionado
-        if (isFirstLoad && name === DEFAULT_MODEL) {
-          opt.selected = true;
-          el.welcomeModel.textContent = name;
-        }
+        opt.value = "";
+        opt.textContent = "⚠️ Sem modelos locais";
+        opt.disabled = true;
+        opt.selected = true;
         el.modelSelect.appendChild(opt);
+        el.welcomeModel.textContent = "Nenhum modelo carregado";
+        showError("Nenhum modelo encontrado no Ollama. Use o script de download.");
+      } else {
+        for (const name of models) {
+          const opt = document.createElement("option");
+          opt.value = name;
+          opt.textContent = name;
+          if (isFirstLoad && name === DEFAULT_MODEL) {
+            opt.selected = true;
+            el.welcomeModel.textContent = name;
+          }
+          el.modelSelect.appendChild(opt);
+        }
+        if (!isFirstLoad && current && [...el.modelSelect.options].some((o) => o.value === current)) {
+          el.modelSelect.value = current;
+        }
       }
-      if (!isFirstLoad && current && [...el.modelSelect.options].some((o) => o.value === current)) {
-        el.modelSelect.value = current;
-      }
+
       isFirstLoad = false;
-      fetchSessions(); // Atualiza a lista de chats salvos do pendrive
-    } catch {
+      fetchSessions();
+    } catch (e) {
       apiOnline = false;
       el.statusBadge.className = "status-badge status-offline";
       el.statusBadge.textContent = "● Backend offline";
       showError("Não foi possível contatar " + API_BASE + " (CORS ou servidor parado).");
     }
-    el.btnSend.disabled = !apiOnline;
-    el.messageInput.disabled = !apiOnline;
-    el.btnClip.disabled = !apiOnline;
+    el.btnSend.disabled = !apiOnline || (Array.isArray(h?.models) && h.models.length === 0);
+    el.messageInput.disabled = !apiOnline || (Array.isArray(h?.models) && h.models.length === 0);
+    el.btnClip.disabled = !apiOnline || (Array.isArray(h?.models) && h.models.length === 0);
   }
 
   async function sendChat() {
