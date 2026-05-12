@@ -1,0 +1,7 @@
+# Binarios a serem baixados
+bin/python/
+data/
+
+# Arquivos de sistema
+.DS_Store
+__pycache__/

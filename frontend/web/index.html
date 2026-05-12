@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Portable AI Stack</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebar">
+      <h2>Configurações</h2>
+      <p class="sidebar-section">Status</p>
+      <div id="status-badge" class="status-badge status-offline">● Verificando…</div>
+
+      <p class="sidebar-section">Modelo</p>
+      <select id="model-select" aria-label="Modelo"></select>
+
+      <p class="sidebar-section">Parâmetros</p>
+      <label>Temperature <span class="range-value" id="temp-val"></span></label>
+      <input type="range" id="temperature" min="0" max="2" step="0.1" value="0.4" />
+      <label>Top P <span class="range-value" id="topp-val"></span></label>
+      <input type="range" id="top-p" min="0" max="1" step="0.05" value="0.6" />
+      <label>Top K <span class="range-value" id="topk-val"></span></label>
+      <input type="range" id="top-k" min="0" max="200" step="1" value="40" />
+      <label>Max tokens <span class="range-value" id="mt-val"></span></label>
+      <input type="range" id="max-tokens" min="256" max="32768" step="512" value="4096" />
+
+      <label style="margin-top: 0.65rem; display: flex; align-items: center; gap: 8px; cursor: pointer">
+        <input type="checkbox" id="think" />
+        Raciocínio (thinking)
+      </label>
+
+      <p class="sidebar-section">System prompt</p>
+      <textarea id="system-prompt" rows="5" placeholder="Instruções do sistema…"></textarea>
+
+      <hr class="hr" />
+      <p class="sidebar-section">Sessão</p>
+      <div class="metric-grid">
+        <div class="metric-box" title="Mensagens na sessão atual">
+          <div class="value" id="metric-msgs">0</div>
+          <div class="label">Mensagens</div>
+        </div>
+        <div class="metric-box" title="Total de tokens usados">
+          <div class="value" id="metric-tokens">0</div>
+          <div class="label">Tokens</div>
+        </div>
+        <div class="metric-box" title="Tempo total da última resposta">
+          <div class="value" id="metric-time">0s</div>
+          <div class="label">Tempo</div>
+        </div>
+        <div class="metric-box" title="Velocidade de geração">
+          <div class="value" id="metric-tps">0</div>
+          <div class="label">tok/s</div>
+        </div>
+        <div class="metric-box box-full" title="Tempo de raciocínio (Time to First Token)">
+          <div class="value" id="metric-ttft">0s</div>
+          <div class="label">Thinking</div>
+        </div>
+      </div>
+      <button type="button" class="btn btn-sidebar" id="btn-clear" style="margin-top: 0.75rem">
+        Limpar conversa
+      </button>
+      <p class="sidebar-section" id="sid-label" style="display: none">Session ID</p>
+      <code class="session-id" id="session-preview" style="display: none"></code>
+    </aside>
+
+    <!-- Gaveta de Histórico -->
+    <div class="history-drawer" id="history-drawer">
+      <div class="drawer-handle" title="Histórico de Conversas">
+        <span>🕒</span>
+      </div>
+      <div class="drawer-content">
+        <h2>Suas Conversas</h2>
+        <div id="history-list" class="history-list">
+          <p class="empty-history">Nenhum chat salvo.</p>
+        </div>
+      </div>
+    </div>
+
+    <main class="main">
+      <div class="overlay" id="overlay" aria-hidden="true"></div>
+      <header class="main-header">
+        <button type="button" class="btn-menu" id="btn-menu" aria-label="Menu">☰</button>
+        <h1>Portable AI Stack</h1>
+        <span class="badge-pill">100% local</span>
+      </header>
+
+      <div class="alert alert-error" id="alert-error"></div>
+
+      <div class="loading-row" id="loading-row">
+        <div class="spinner" aria-hidden="true"></div>
+        <span>Gerando resposta…</span>
+        <button type="button" class="btn-stop" id="btn-stop" title="Parar geração">Parar</button>
+      </div>
+
+      <div class="messages-wrap" id="messages">
+        <div class="welcome" id="welcome">
+          <div class="icon">💬</div>
+          <p>Inicie uma conversa.</p>
+          <p style="font-size: 0.8rem; color: #333">
+            Modelo: <span style="color: #8b1a1a" id="welcome-model"></span> · local
+          </p>
+        </div>
+      </div>
+
+      <div class="composer">
+        <input type="file" id="file-input" />
+        <div class="attach-wrap">
+          <button type="button" class="btn-clip" id="btn-clip" title="Anexar arquivo">📎</button>
+          <span class="file-hint" id="file-hint" style="display: none"></span>
+          <button type="button" class="btn-clear-file" id="btn-clear-file" style="display: none">
+            limpar
+          </button>
+        </div>
+        <div class="input-wrap">
+          <textarea id="message-input" rows="1" placeholder="Digite sua mensagem…" autocomplete="off"></textarea>
+          <button type="button" class="btn-send" id="btn-send" title="Enviar" aria-label="Enviar">
+            <span class="icon-send">➤</span>
+            <span class="icon-stop" style="display: none">■</span>
+          </button>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/lib/marked.umd.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.2/dist/purify.min.js" crossorigin="anonymous"></script>
+  <script src="app.js"></script>
+</body>
+
+</html>
