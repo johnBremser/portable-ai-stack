@@ -4,88 +4,43 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Portable AI Stack</title>
-  <link rel="stylesheet" href="styles.css" />
+  <title>Local AI Stack</title>
+  <link rel="stylesheet" href="styleUI.css" />
 </head>
 
 <body>
-  <div class="app">
-    <aside class="sidebar" id="sidebar">
-      <h2>Configurações</h2>
-      <p class="sidebar-section">Status</p>
-      <div id="status-badge" class="status-badge status-offline">● Verificando…</div>
-
-      <p class="sidebar-section">Modelo</p>
-      <select id="model-select" aria-label="Modelo"></select>
-
-      <p class="sidebar-section">Parâmetros</p>
-      <label>Temperature <span class="range-value" id="temp-val"></span></label>
-      <input type="range" id="temperature" min="0" max="2" step="0.1" value="0.4" />
-      <label>Top P <span class="range-value" id="topp-val"></span></label>
-      <input type="range" id="top-p" min="0" max="1" step="0.05" value="0.6" />
-      <label>Top K <span class="range-value" id="topk-val"></span></label>
-      <input type="range" id="top-k" min="0" max="200" step="1" value="40" />
-      <label>Max tokens <span class="range-value" id="mt-val"></span></label>
-      <input type="range" id="max-tokens" min="256" max="32768" step="512" value="4096" />
-
-      <label style="margin-top: 0.65rem; display: flex; align-items: center; gap: 8px; cursor: pointer">
-        <input type="checkbox" id="think" />
-        Raciocínio (thinking)
-      </label>
-
-      <p class="sidebar-section">System prompt</p>
-      <textarea id="system-prompt" rows="5" placeholder="Instruções do sistema…"></textarea>
-
-      <hr class="hr" />
-      <p class="sidebar-section">Sessão</p>
-      <div class="metric-grid">
-        <div class="metric-box" title="Mensagens na sessão atual">
-          <div class="value" id="metric-msgs">0</div>
-          <div class="label">Mensagens</div>
-        </div>
-        <div class="metric-box" title="Total de tokens usados">
-          <div class="value" id="metric-tokens">0</div>
-          <div class="label">Tokens</div>
-        </div>
-        <div class="metric-box" title="Tempo total da última resposta">
-          <div class="value" id="metric-time">0s</div>
-          <div class="label">Tempo</div>
-        </div>
-        <div class="metric-box" title="Velocidade de geração">
-          <div class="value" id="metric-tps">0</div>
-          <div class="label">tok/s</div>
-        </div>
-        <div class="metric-box box-full" title="Tempo de raciocínio (Time to First Token)">
-          <div class="value" id="metric-ttft">0s</div>
-          <div class="label">Thinking</div>
-        </div>
+  <div class="app-shell">
+    <aside class="chat-sidebar" id="chat-sidebar">
+      <div class="sidebar-top">
+        <h1>Local AI Stack</h1>
+        <button type="button" class="btn btn-primary" id="btn-new-chat">+ Novo chat</button>
       </div>
-      <button type="button" class="btn btn-sidebar" id="btn-clear" style="margin-top: 0.75rem">
-        Limpar conversa
-      </button>
-      <p class="sidebar-section" id="sid-label" style="display: none">Session ID</p>
-      <code class="session-id" id="session-preview" style="display: none"></code>
+
+      <div class="sidebar-search-wrap">
+        <input type="text" id="history-search" class="history-search" placeholder="Buscar conversa..." />
+      </div>
+
+      <div class="history-list" id="history-list">
+        <p class="empty-history">Nenhum chat salvo.</p>
+      </div>
     </aside>
 
-    <!-- Gaveta de Histórico -->
-    <div class="history-drawer" id="history-drawer">
-      <div class="drawer-handle" title="Histórico de Conversas">
-        <span>🕒</span>
-      </div>
-      <div class="drawer-content">
-        <h2>Suas Conversas</h2>
-        <div id="history-list" class="history-list">
-          <p class="empty-history">Nenhum chat salvo.</p>
+    <main class="chat-main">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button type="button" class="btn-icon mobile-only" id="btn-menu" title="Menu">☰</button>
+          <h2>Chat</h2>
+          <span class="status-badge status-offline" id="status-badge">● Verificando…</span>
         </div>
-      </div>
-    </div>
-
-    <main class="main">
-      <div class="overlay" id="overlay" aria-hidden="true"></div>
-      <header class="main-header">
-        <button type="button" class="btn-menu" id="btn-menu" aria-label="Menu">☰</button>
-        <h1>Portable AI Stack</h1>
-        <span class="badge-pill">100% local</span>
+        <div class="topbar-right">
+          <div class="token-tracker" id="token-tracker" title="Consumo de tokens" style="display: none;">
+            <div class="token-chart" id="token-chart"></div>
+            <span class="token-text" id="token-text">0/0</span>
+          </div>
+          <span class="session-chip" id="session-chip" title="Sessão atual">Sessão: nova</span>
+          <button type="button" class="btn-icon" id="btn-focus" title="Modo foco">⤢</button>
+          <button type="button" class="btn-icon" id="btn-settings" title="Configurações">⚙</button>
+        </div>
       </header>
 
       <div class="alert alert-error" id="alert-error"></div>
@@ -96,38 +51,119 @@
         <button type="button" class="btn-stop" id="btn-stop" title="Parar geração">Parar</button>
       </div>
 
+      <div class="attachment-notice" id="attachment-notice" style="display:none">
+        Esta conversa possui anexos antigos. Eles não entram automaticamente no novo contexto.
+        Clique no botão <strong>X</strong> no card do anexo para reutilizar no próximo envio.
+      </div>
+
       <div class="messages-wrap" id="messages">
         <div class="welcome" id="welcome">
-          <div class="icon">💬</div>
-          <p>Inicie uma conversa.</p>
-          <p style="font-size: 0.8rem; color: #333">
-            Modelo: <span style="color: #8b1a1a" id="welcome-model"></span> · local
-          </p>
+          <div class="welcome-icon">💬</div>
+          <p>Como posso ajudar você hoje?</p>
+          <p class="welcome-sub">Modelo: <span id="welcome-model"></span></p>
         </div>
       </div>
 
       <div class="composer">
         <input type="file" id="file-input" />
-        <div class="attach-wrap">
-          <button type="button" class="btn-clip" id="btn-clip" title="Anexar arquivo">📎</button>
-          <span class="file-hint" id="file-hint" style="display: none"></span>
-          <button type="button" class="btn-clear-file" id="btn-clear-file" style="display: none">
-            limpar
-          </button>
+        <button type="button" class="btn-icon btn-attach" id="btn-clip" title="Anexar arquivo">📎</button>
+        <div class="composer-input-wrap">
+          <textarea id="message-input" rows="1" placeholder="Digite sua mensagem..." autocomplete="off"></textarea>
+          <button type="button" class="btn-send" id="btn-send" title="Enviar">➤</button>
         </div>
-        <div class="input-wrap">
-          <textarea id="message-input" rows="1" placeholder="Digite sua mensagem…" autocomplete="off"></textarea>
-          <button type="button" class="btn-send" id="btn-send" title="Enviar" aria-label="Enviar">
-            <span class="icon-send">➤</span>
-            <span class="icon-stop" style="display: none">■</span>
-          </button>
-        </div>
+      </div>
+      <div class="composer-file-hint">
+        <span id="file-hint" style="display:none"></span>
+        <button type="button" id="btn-clear-file" style="display:none">remover anexo</button>
       </div>
     </main>
   </div>
+
+  <div class="overlay" id="overlay" aria-hidden="true"></div>
+
+  <div class="modal-overlay" id="settings-overlay" aria-hidden="true">
+    <section class="settings-modal" id="settings-modal" role="dialog" aria-modal="true">
+      <div class="settings-head">
+        <h3>Configurações avançadas</h3>
+        <button type="button" class="btn-icon" id="btn-close-settings">✕</button>
+      </div>
+
+      <div class="settings-body">
+        <p class="sidebar-section">Modelo</p>
+        <select id="model-select" aria-label="Modelo"></select>
+
+        <p class="sidebar-section">Parâmetros</p>
+        <label>Temperature <span class="range-value" id="temp-val"></span></label>
+        <input type="range" id="temperature" min="0" max="2" step="0.1" value="0.4" />
+        <label>Top P <span class="range-value" id="topp-val"></span></label>
+        <input type="range" id="top-p" min="0" max="1" step="0.05" value="0.6" />
+        <label>Top K <span class="range-value" id="topk-val"></span></label>
+        <input type="range" id="top-k" min="0" max="200" step="1" value="40" />
+        <label>Max tokens <span class="range-value" id="mt-val"></span></label>
+        <input type="range" id="max-tokens" min="256" max="32768" step="512" value="32768" />
+
+        <label class="think-row">
+          <input type="checkbox" id="think" />
+          Exibir raciocínio (thinking)
+        </label>
+
+        <p class="sidebar-section">Prompt Global (Default)</p>
+        <textarea id="system-prompt" rows="5" placeholder="Instruções padrão para todas as conversas..."></textarea>
+
+        <button type="button" class="btn btn-danger" id="btn-clear">Limpar conversa atual</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="modal-overlay" id="session-overlay" aria-hidden="true">
+    <section class="settings-modal" id="session-modal" role="dialog" aria-modal="true">
+      <div class="settings-head">
+        <h3>Parâmetros da Sessão</h3>
+        <button type="button" class="btn-icon" id="btn-close-session">✕</button>
+      </div>
+
+      <div class="settings-body">
+        <p class="sidebar-section">Prompt da Sessão (Override)</p>
+        <textarea id="session-prompt" rows="5" placeholder="Instruções exclusivas para este chat..."></textarea>
+
+        <p class="sidebar-section">Ajustes Finos</p>
+        <label>Temperature <span class="range-value" id="s-temp-val"></span></label>
+        <input type="range" id="s-temperature" min="0" max="2" step="0.1" value="0.7" />
+        <label>Top P <span class="range-value" id="s-topp-val"></span></label>
+        <input type="range" id="s-top-p" min="0" max="1" step="0.05" value="0.9" />
+        <label>Top K <span class="range-value" id="s-topk-val"></span></label>
+        <input type="range" id="s-top-k" min="0" max="200" step="1" value="40" />
+        <label>Max tokens <span class="range-value" id="s-mt-val"></span></label>
+        <input type="range" id="s-max-tokens" min="256" max="32768" step="512" value="2048" />
+
+        <label class="think-row">
+          <input type="checkbox" id="s-think" />
+          Exibir raciocínio (session override)
+        </label>
+        
+        <p style="font-size: 0.75rem; color: var(--text-soft); margin-top: 1rem;">
+          * Se deixado no padrão, o chat usará as configurações globais.
+        </p>
+      </div>
+    </section>
+  </div>
+
+  <div class="modal-overlay" id="command-overlay" aria-hidden="true">
+    <section class="command-modal" role="dialog" aria-modal="true">
+      <h3>Ações rápidas</h3>
+      <p>Atalho: Ctrl+K</p>
+      <div class="command-list">
+        <button type="button" data-action="new-chat">Novo chat</button>
+        <button type="button" data-action="toggle-focus">Alternar modo foco</button>
+        <button type="button" data-action="open-settings">Abrir configurações globais</button>
+        <button type="button" data-action="export-markdown">Exportar conversa (.md)</button>
+      </div>
+    </section>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/lib/marked.umd.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.2/dist/purify.min.js" crossorigin="anonymous"></script>
-  <script src="app.js"></script>
+  <script src="appUI.js"></script>
 </body>
 
 </html>

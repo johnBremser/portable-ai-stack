@@ -1,0 +1,12 @@
+llama.cpp\llama-server ^
+-m "../data/models/Qwen3.5-9B-GGUF/Qwen3.5-9B-Q4_K_M.gguf" ^
+--alias "Qwen3.5_9B" ^
+--mmproj "../data/models/Qwen3.5-9B-GGUF/mmproj-Qwen3.5-9B-BF16.gguf" ^
+--port 8080 ^
+--host 0.0.0.0 ^
+-c 32768 ^
+--flash-attn on ^
+--no-mmap ^
+--cache-type-k q8_0 ^
+--cache-type-v q8_0 ^
+--parallel 1 
