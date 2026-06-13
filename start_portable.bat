@@ -42,7 +42,9 @@ echo [!] Usando modelo: !GGUF_MODEL!
 :: 4. Iniciar llama-server
 :: --ctx-size 4096 (padrao razoavel) --port 8080
 echo [2/3] Iniciando llama-server...
-start "llama-server" /min "%LLAMA_EXE%" -m "%BASE_DIR%data\models\Qwen3.5-9B-GGUF\Qwen3.5-9B-Q4_K_M.gguf" --alias "Qwen3.5_9B" --mmproj "%BASE_DIR%data\models\Qwen3.5-9B-GGUF\mmproj-Qwen3.5-9B-BF16.gguf" --port 8080 --host 0.0.0.0 -c 32768 --flash-attn on --no-mmap --cache-type-k q8_0 --cache-type-v q8_0 --parallel 1
+:: rem start "llama-server" /min "%LLAMA_EXE%" -m "%BASE_DIR%data\models\Qwen3.5-9B-GGUF\Qwen3.5-9B-Q4_K_M.gguf" --alias "Qwen3.5_9B" --mmproj "%BASE_DIR%data\models\Qwen3.5-9B-GGUF\mmproj-Qwen3.5-9B-BF16.gguf" --port 8080 --host 0.0.0.0 -c 32768 --flash-attn on --no-mmap --cache-type-k q8_0 --cache-type-v q8_0 --parallel 1
+:: rem start "llama-server" /min "%LLAMA_EXE%" -m "%BASE_DIR%data\models\Qwen3-Coder-30B-A3B-Instruct-GGUF\Qwen3-Coder-30B-A3B-Instruct-Q3_K_L.gguf" --alias "Qwen3_Coder_30B" --mmproj "%BASE_DIR%data\models\Qwen3.5-9B-GGUF\mmproj-Qwen3.5-9B-BF16.gguf" --port 8080 --host 0.0.0.0 -c 32768 --flash-attn on --no-mmap --cache-type-k q8_0 --cache-type-v q8_0 --parallel 1
+start "llama-server" /min "%LLAMA_EXE%" -m "%BASE_DIR%data\models\Qwen3.6-35B-A3B-UD-IQ4_NL\Qwen3.6-35B-A3B-UD-IQ4_NL.gguf" --alias "Qwen3.6_35B" --mmproj "%BASE_DIR%data\models\Qwen3.6-35B-A3B-UD-IQ4_NL\mmproj-F16.gguf" --port 8080 --host 0.0.0.0 -c 32768 --flash-attn on --no-mmap --cache-type-k q8_0 --cache-type-v q8_0 --parallel 1
 
 :: Aguarda o servidor subir (modelos grandes podem demorar)
 echo [!] Aguardando servidor LLM (12s)...
