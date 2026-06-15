@@ -233,6 +233,29 @@ body,
   font-size: 1.02rem;
 }
 
+.topbar-model-select {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 0.35rem 0.60rem;
+  font-size: 0.82rem;
+  cursor: pointer;
+  max-width: 240px;
+  outline: none;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.topbar-model-select:hover {
+  background: var(--surface-3);
+  border-color: var(--border-soft);
+}
+
+.topbar-model-select:focus {
+  border-color: var(--accent);
+}
+
 .btn-icon {
   width: 36px;
   height: 36px;

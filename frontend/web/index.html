@@ -30,6 +30,7 @@
         <div class="topbar-left">
           <button type="button" class="btn-icon mobile-only" id="btn-menu" title="Menu">☰</button>
           <h2>Chat</h2>
+          <select id="model-select" aria-label="Modelo" class="topbar-model-select"></select>
           <span class="status-badge status-offline" id="status-badge">● Verificando…</span>
         </div>
         <div class="topbar-right">
@@ -89,9 +90,6 @@
       </div>
 
       <div class="settings-body">
-        <p class="sidebar-section">Modelo</p>
-        <select id="model-select" aria-label="Modelo"></select>
-
         <p class="sidebar-section">Parâmetros</p>
         <label>Temperature <span class="range-value" id="temp-val"></span></label>
         <input type="range" id="temperature" min="0" max="2" step="0.1" value="0.4" />
