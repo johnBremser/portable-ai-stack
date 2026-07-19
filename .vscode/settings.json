@@ -1,0 +1,23 @@
+{
+    "C_Cpp.default.compilerPath": "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.34.31931/bin/Hostx64/x64/cl.exe",
+    "C_Cpp.default.intelliSenseMode": "msvc-x64",
+    "C_Cpp.default.includePath": [
+        "${workspaceFolder}/**",
+        "${workspaceFolder}/include/**",
+        "${workspaceFolder}/src/**",
+        "${workspaceFolder}/ggml/include/**",
+        "${workspaceFolder}/common/**"
+    ],
+    "C_Cpp.default.cStandard": "c17",
+    "C_Cpp.default.cppStandard": "c++17",
+    "C_Cpp.errorSquiggles": "Enabled",
+    "C_Cpp.autocomplete": "Enabled",
+    "C_Cpp.codeLens": "Enabled",
+    "C_Cpp.formatting": "Enabled",
+    "C_Cpp.clangd.enabled": false,
+    "C_Cpp.clangd.args": [
+        "--compile-commands-dir=${workspaceFolder}",
+        "--query-bindings"
+    ],
+    "C_Cpp.clangd.path": "C:/Program Files/LLVM/bin/clangd.exe"
+}

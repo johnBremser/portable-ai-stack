@@ -1,0 +1,21 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "llama.cpp Debug",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/Release/llama-server.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen",
+            "MIMode": "msvc",
+            "miDebuggerPath": "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.34.31931/bin/Hostx64/x64/cl.exe",
+            "preLaunchTask": "configure",
+            "postDebugLaunch": "build"
+        }
+    ]
+}
